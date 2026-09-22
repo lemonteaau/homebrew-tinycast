@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: '31 21 * * *'
   workflow_dispatch:
+  workflow_call:
+    secrets:
+      TAP_DEPLOY_KEY:
+        required: true
 
 permissions:
   contents: write
@@ -14,40 +18,20 @@ concurrency:
 
 jobs:
   update:
-    if: github.repository == 'lemonteaau/homebrew-tinycast'
+    if: github.repository == 'lemonteaau/homebrew-tinycast' || github.repository == 'lemonteaau/tinycast'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: lemonteaau/homebrew-tinycast
+          ref: main
+          ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}
 
-      - name: Fetch latest signed fork release and update checksum
+      - name: Test cask publication
+        run: python3 -m unittest discover -s Tests -v
+
+      - name: Verify release and publish cask
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api repos/lemonteaau/tinycast/releases/latest > "$RUNNER_TEMP/release.json"
-          TAG=$(jq -r .tag_name "$RUNNER_TEMP/release.json")
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-fork\.[0-9]+$ ]]; then
-            echo "Unexpected fork release: $TAG" >&2
-            exit 1
-          fi
-          VERSION=${TAG#v}
-          DMG="Tinycast-$VERSION.dmg"
-          URL=$(jq -r --arg name "$DMG" '.assets[] | select(.name == $name) | .browser_download_url' "$RUNNER_TEMP/release.json")
-          if [ "$URL" != "https://github.com/lemonteaau/tinycast/releases/download/$TAG/$DMG" ]; then
-            echo 'Release does not have the expected DMG.' >&2
-            exit 1
-          fi
-          if [ -f Casks/tinycast-fork.rb ] && grep -Fq "  version \"$VERSION\"" Casks/tinycast-fork.rb; then
-            echo "Already at $VERSION" >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          curl -fsSL "$URL" -o "$RUNNER_TEMP/$DMG"
-          SHA=$(sha256sum "$RUNNER_TEMP/$DMG" | cut -d ' ' -f 1)
-          mkdir -p Casks
-          sed -e "s/__VERSION__/$VERSION/" -e "s/__SHA256__/$SHA/" \
-            Templates/tinycast-fork.rb > Casks/tinycast-fork.rb
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Casks/tinycast-fork.rb
-          git commit -m "Tinycast fork $VERSION"
-          git push origin HEAD:main
-          echo "Updated cask to $VERSION (SHA-256: $SHA)" >> "$GITHUB_STEP_SUMMARY"
+        run: python3 Scripts/update-cask.py
