@@ -5,6 +5,10 @@ on:
     - cron: '31 21 * * *'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      minimum-version:
+        type: string
+        required: true
     secrets:
       TAP_DEPLOY_KEY:
         required: true
@@ -34,4 +38,5 @@ jobs:
       - name: Verify release and publish cask
         env:
           GH_TOKEN: ${{ github.token }}
+          MINIMUM_VERSION: ${{ inputs.minimum-version }}
         run: python3 Scripts/update-cask.py

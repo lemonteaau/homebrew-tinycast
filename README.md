@@ -18,7 +18,9 @@ do not delete its settings. Only one cask can own `/Applications/Tinycast.app` a
 The cask clears Gatekeeper quarantine after installation. Its `auto_updates true` lets Tinycast
 handle subsequent upgrades through its in-app updater. The fork's release workflow calls this tap's
 [reusable workflow](.github/workflows/update-cask.yml) immediately after publishing. The entire release
-workflow succeeds only when the cask is verified remotely. The daily schedule at 21:31 UTC is a repair
+workflow supplies its expected version and succeeds only when that version or a newer one is verified
+remotely. A stale GitHub latest-release response retries, then fails if it never catches up.
+The daily schedule at 21:31 UTC is a repair
 path, not the normal publication path; **Run workflow** is also available without rebuilding the app.
 
 The release job receives a dedicated SSH deploy key with write access to this tap only. Its private

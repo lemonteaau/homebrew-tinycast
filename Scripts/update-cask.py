@@ -74,9 +74,21 @@ def render_cask(template, current, version, digest):
     return template.replace("__VERSION__", version).replace("__SHA256__", digest)
 
 
+def latest_release(minimum):
+    if minimum:
+        version_key(minimum)
+    for attempt in range(3):
+        release = json.loads(run("gh", "api", f"repos/{REPOSITORY}/releases/latest"))
+        version, urls = release_assets(release)
+        if not minimum or version_key(version) >= version_key(minimum):
+            return version, urls
+        if attempt < 2:
+            time.sleep(5 * (attempt + 1))
+    raise ValueError(f"Latest release {version} is older than this pipeline's {minimum}")
+
+
 def verified_release():
-    release = json.loads(run("gh", "api", f"repos/{REPOSITORY}/releases/latest"))
-    version, urls = release_assets(release)
+    version, urls = latest_release(os.environ.get("MINIMUM_VERSION", ""))
     dmg = f"Tinycast-{version}.dmg"
     with tempfile.TemporaryDirectory(prefix="tinycast-cask-") as directory:
         for name, url in urls.items():

@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -57,6 +58,16 @@ class ReleaseValidationTests(unittest.TestCase):
             publisher.render_cask(TEMPLATE, updated, "0.11.3-fork.9", SHA)
         with self.assertRaises(ValueError):
             publisher.render_cask(TEMPLATE, updated, "0.11.3-fork.10", "b" * 64)
+
+    def test_stale_latest_release_cannot_complete_a_newer_pipeline(self):
+        stale = json.dumps(self.release())
+        fresh = stale.replace("0.11.3-fork.5", "0.11.3-fork.6")
+        with patch.object(publisher, "run", side_effect=[stale, fresh]), \
+                patch.object(publisher.time, "sleep"):
+            self.assertEqual(publisher.latest_release("0.11.3-fork.6")[0], "0.11.3-fork.6")
+        with patch.object(publisher, "run", return_value=stale), \
+                patch.object(publisher.time, "sleep"), self.assertRaises(ValueError):
+            publisher.latest_release("0.11.3-fork.6")
 
 
 class PublicationTests(unittest.TestCase):
