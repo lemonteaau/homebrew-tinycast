@@ -5,7 +5,7 @@ with currency shorthand such as `610 aud cny`. It follows the official Tinycast 
 fork build revision, for example `0.11.3-fork.2`.
 
 ```sh
-brew trust --tap lemonteaau/tinycast
+brew trust --cask lemonteaau/tinycast/tinycast-fork
 brew install --cask lemonteaau/tinycast/tinycast-fork
 ```
 
