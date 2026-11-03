@@ -1,6 +1,6 @@
 cask "tinycast-fork" do
-  version "0.12.1-fork.70"
-  sha256 "5efcee9e320ed3c6f35f0ff74a3218333fc104fe4c84be743231935dcf6709a8"
+  version "0.12.1-fork.72"
+  sha256 "cedf6c8214aab537fcc722eb80ed3e5bd6263413b540fd6bd839d6fe6f328a3b"
 
   url "https://github.com/lemonteaau/tinycast/releases/download/v#{version}/Tinycast-#{version}.dmg"
   name "Tinycast (lemonteaau fork)"
