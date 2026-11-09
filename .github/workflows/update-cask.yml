@@ -2,7 +2,7 @@ name: Refresh fork cask
 
 on:
   schedule:
-    - cron: '31 21 * * *'
+    - cron: '31 21 */4 * *' # every 4 days
   workflow_dispatch:
   workflow_call:
     inputs:
