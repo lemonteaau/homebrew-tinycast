@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import os
@@ -48,6 +49,36 @@ class ReleaseValidationTests(unittest.TestCase):
                          f"{SHA}  app.dmg\n{SHA}  app.dmg"):
             with self.assertRaises(ValueError):
                 publisher.verify_checksum(manifest, "app.dmg", SHA)
+
+    def test_private_assets_use_authenticated_downloads_and_verify_bytes(self):
+        version, urls = publisher.release_assets(self.release())
+        contents = b"private release dmg"
+        digest = hashlib.sha256(contents).hexdigest()
+        downloads = []
+
+        def download(*args):
+            self.assertEqual(args[:6], ("gh", "release", "download", f"v{version}",
+                                          "--repo", publisher.REPOSITORY))
+            name = args[args.index("--pattern") + 1]
+            directory = Path(args[args.index("--dir") + 1])
+            downloads.append(name)
+            data = contents if name.endswith(".dmg") else f"{digest}  Tinycast-{version}.dmg\n".encode()
+            (directory / name).write_bytes(data)
+            return ""
+
+        with patch.object(publisher, "latest_release", return_value=(version, urls)), \
+                patch.object(publisher, "run", side_effect=download):
+            self.assertEqual(publisher.verified_release(), (version, digest))
+        self.assertEqual(set(downloads), set(urls))
+
+    def test_failed_authenticated_download_cannot_publish(self):
+        version, urls = publisher.release_assets(self.release())
+        with patch.object(publisher, "latest_release", return_value=(version, urls)), \
+                patch.object(publisher, "run", side_effect=subprocess.CalledProcessError(1, "gh")) as run, \
+                patch.object(publisher.time, "sleep"), \
+                self.assertRaises(subprocess.CalledProcessError):
+            publisher.verified_release()
+        self.assertEqual(run.call_count, 4)
 
     def test_revision_order_and_immutable_versions(self):
         current = publisher.render_cask(TEMPLATE, "", "0.11.3-fork.9", SHA)

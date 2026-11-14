@@ -9,6 +9,10 @@ brew trust --cask lemonteaau/tinycast/tinycast-fork
 brew install --cask lemonteaau/tinycast/tinycast-fork
 ```
 
+The source repository is private. For installation and updates, use its documented GitHub CLI /
+local-signing installer or the app updater with your authorized account; the public download URLs
+in this cask require access to that repository.
+
 The first install replaces an existing `Tinycast.app` with the same bundle identifier and keeps
 its preferences and data. Quit Tinycast and back up the current app before switching signing
 identities. You may need to grant Accessibility permission again after the replacement.
@@ -20,13 +24,15 @@ handle subsequent upgrades through its in-app updater. The fork's release workfl
 [reusable workflow](.github/workflows/update-cask.yml) immediately after publishing. The entire release
 workflow supplies its expected version and succeeds only when that version or a newer one is verified
 remotely. A stale GitHub latest-release response retries, then fails if it never catches up.
-The daily schedule at 21:31 UTC is a repair
-path, not the normal publication path; **Run workflow** is also available without rebuilding the app.
+The private source repository owns this workflow invocation and its read token. To repair publication,
+rerun the failed Homebrew job in the source repository. Its maintenance workflow can also be dispatched
+there; an already released source commit skips rebuilding the app.
 
 The release job receives a dedicated SSH deploy key with write access to this tap only. Its private
 key is stored as `HOMEBREW_TAP_DEPLOY_KEY` in `lemonteaau/tinycast` and passed only to the cask job.
-No personal access token is stored. The daily/manual job uses this tap's own `GITHUB_TOKEN`.
-The updater downloads the DMG, compares its SHA-256 with the release's checksum manifest, and then
+No personal access token is stored. This tap has no independent scheduled or manual job: its own
+`GITHUB_TOKEN` cannot read the private source repository. The caller's token downloads private assets
+through `gh release download`. The updater downloads the DMG, compares its SHA-256 with the release's checksum manifest, and then
 commits the cask. Repeated runs are idempotent. Concurrent pushes retry against the current remote and
 latest release; older releases cannot roll the cask back. A changed checksum for an existing version
 fails instead of silently replacing it. Permission or verification failures fail the workflow.

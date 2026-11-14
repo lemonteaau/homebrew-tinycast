@@ -91,10 +91,16 @@ def verified_release():
     version, urls = latest_release(os.environ.get("MINIMUM_VERSION", ""))
     dmg = f"Tinycast-{version}.dmg"
     with tempfile.TemporaryDirectory(prefix="tinycast-cask-") as directory:
-        for name, url in urls.items():
-            run("curl", "--fail", "--silent", "--show-error", "--location",
-                "--retry", "3", "--retry-all-errors", "--connect-timeout", "20",
-                "--max-time", "120", url, "--output", str(Path(directory) / name))
+        for name in urls:
+            for attempt in range(4):
+                try:
+                    run("gh", "release", "download", f"v{version}", "--repo", REPOSITORY,
+                        "--pattern", name, "--dir", directory, "--clobber")
+                    break
+                except subprocess.CalledProcessError:
+                    if attempt == 3:
+                        raise
+                    time.sleep(2 ** attempt)
         digest = hashlib.sha256((Path(directory) / dmg).read_bytes()).hexdigest()
         verify_checksum((Path(directory) / "SHA256SUMS.txt").read_text(), dmg, digest)
     return version, digest
